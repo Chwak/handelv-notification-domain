@@ -1,0 +1,203 @@
+================================================================================
+NOTIFICATION DOMAIN - SCOPE & RESPONSIBILITY
+================================================================================
+
+DOMAIN PURPOSE
+================================================================================
+
+The Notification Domain manages re-engagement, communication, and user notifications across multiple channels (in-app, email, push, SMS). This domain is primarily event-driven and consumes events from other domains to create and deliver notifications.
+
+================================================================================
+WHAT THIS DOMAIN OWNS
+================================================================================
+
+1. Notifications
+   - Notification records
+   - Notification content (title, message, payload)
+   - Notification status (unread, read)
+   - Notification timestamps
+
+2. Notification Preferences
+   - User notification preferences
+   - Preferences per notification type
+   - Channel preferences (in-app, email, push, SMS)
+   - Default preferences
+
+3. Delivery Logs
+   - Delivery status tracking
+   - Delivery channel tracking
+   - Delivery failure logs
+   - Delivery retry tracking
+
+================================================================================
+WHAT THIS DOMAIN IS RESPONSIBLE FOR
+================================================================================
+
+1. Notification Creation
+   - Creating notifications from domain events
+   - Determining notification types
+   - Formatting notification content
+   - Applying user preferences
+
+2. Notification Delivery
+   - Delivering notifications via multiple channels
+   - Managing delivery channels (in-app, email, push, SMS)
+   - Handling delivery failures
+   - Retrying failed deliveries
+
+3. Preference Management
+   - Managing user notification preferences
+   - Applying default preferences
+   - Respecting user preferences
+   - Updating preferences
+
+4. Read and Click Tracking
+   - Tracking notification reads
+   - Tracking notification clicks
+   - Maintaining unread counts
+   - Supporting engagement analytics
+
+5. Notification Batching
+   - Batching similar notifications
+   - Reducing notification fatigue
+   - Managing batch rules
+   - Delivering batched notifications
+
+6. Event Consumption
+   - Consuming events from all domains
+   - Creating notifications from events
+   - Filtering events based on preferences
+   - Handling event processing
+
+================================================================================
+WHAT THIS DOMAIN DOES NOT OWN
+================================================================================
+
+1. Business Decisions
+   - Order creation (Order Domain)
+   - Payment processing (Payment Domain)
+   - Review creation (Review Trust Domain)
+   - Product publishing (Product Domain)
+
+2. User Data
+   - User profiles (Collector/Maker Domains)
+   - User authentication (Auth Essentials Domain)
+   - User preferences (Collector/Maker Domains, except notification preferences)
+
+3. Message Content
+   - Message content (Communication Domain)
+   - Order details (Order Domain)
+   - Product details (Shelf Domain)
+
+4. Delivery Infrastructure
+   - Email service (SES - managed by AWS)
+   - Push notification service (SNS - managed by AWS)
+   - SMS service (SNS - managed by AWS)
+
+================================================================================
+DOMAIN BOUNDARIES
+================================================================================
+
+1. Input Boundaries
+   - Consumes events from all domains (OrderConfirmed, NewMessage, ReviewReceived, etc.)
+   - Receives preference update requests
+   - Receives notification retrieval requests
+   - Does NOT receive business logic requests
+   - Does NOT create business entities
+
+2. Output Boundaries
+   - Provides notification data
+   - Provides preference data
+   - Publishes notification events (for analytics)
+   - Delivers notifications via multiple channels
+   - Does NOT modify business entities
+   - Does NOT create orders, payments, reviews, etc.
+
+3. Data Boundaries
+   - Owns:
+      - `notifications` table (outgoing notification records and status)
+      - `notification_preferences` table (user preferences and channels)
+      - `notification_templates` (templated messages and versions)
+   - Does NOT own:
+      - Order data (Order Domain)
+      - Payment data (Payment Domain)
+      - Collector profile details beyond what's needed for delivery
+   - Integration Notes:
+      - Consumes events from Order, Payment, Payout, Product, Communication, Review, and Verification domains to generate notifications.
+      - Applies user preferences before delivering; maintains delivery logs and does not write to other domain databases.
+
+4. Integration Boundaries
+   - Consumes events from Order, Payment, Payout, and Identity domains to generate notifications
+   - Publishes notification delivery and bounce events for Audit and Analytics
+   - Integrates with external providers (SES, Twilio, Push services)
+   - Does NOT write to other domains' databases
+1. Deliver Notifications
+   - Create notifications from events
+   - Deliver via appropriate channels
+   - Handle delivery failures
+   - Retry failed deliveries
+
+2. Respect User Preferences
+   - Apply user notification preferences
+   - Respect channel preferences
+   - Apply default preferences
+   - Support preference updates
+
+3. Optimize Delivery
+   - Batch similar notifications
+   - Reduce notification fatigue
+   - Optimize delivery timing
+   - Manage delivery channels
+
+4. Track Engagement
+   - Track notification reads
+   - Track notification clicks
+   - Maintain unread counts
+   - Support engagement analytics
+
+================================================================================
+CROSS-DOMAIN DEPENDENCIES
+================================================================================
+
+This Domain Provides To:
+- Analytics Domain (if exists): NotificationCreated, NotificationDelivered, NotificationFailed, PreferencesUpdated events
+
+This Domain Consumes From:
+- Order Domain: OrderConfirmed, OrderShipped, OrderDelivered, OrderCanceled events
+- Communication Domain: NewMessage, MessageRead events
+- Review Trust Domain: ReviewReceived, ReviewApproved events
+- Payout Domain: PayoutCompleted events
+- Product Domain: ProductPublished events
+- Collector Domain: MakerFollowed events
+- Live Streaming Domain: StreamStarted events
+- Auth Essentials / Identity Domain: UserVerified events
+- Verification Trust Domain: VerificationApproved events
+
+================================================================================
+TECHNICAL SCOPE
+================================================================================
+
+Technologies:
+- DynamoDB (notifications, notification_preferences)
+- AppSync GraphQL API
+- Lambda functions for notification creation and delivery
+- SES (Simple Email Service) for email delivery
+- SNS (Simple Notification Service) for push and SMS delivery
+- EventBridge for consuming events
+
+Data Storage:
+- notifications table
+- notification_preferences table
+
+API Type:
+- GraphQL API (AppSync)
+
+Event Communication:
+- EventBridge for consuming events from all domains
+- EventBridge for publishing analytics events (optional)
+
+Note: This domain is primarily event-driven and consumes events from other domains to create and deliver notifications.
+
+================================================================================
+END OF DOCUMENTATION
+================================================================================

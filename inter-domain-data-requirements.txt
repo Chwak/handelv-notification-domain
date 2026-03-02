@@ -1,0 +1,76 @@
+# Notification Domain - Inter-Domain Data Requirements
+
+## Overview
+All events consumed from other domains to generate notifications.
+
+**Domain:** Notification Domain  
+**Last Updated:** 2026-01-31
+
+---
+
+## 1. EVENTS CONSUMED
+
+Notification Domain consumes events from ALL domains:
+
+### From Auth Domain
+- `UserRegistered` → Welcome email
+- `UserVerified` → Email confirmed notification
+- `UserPasswordChanged` → Security alert
+- `MFASetupCompleted` → MFA confirmation
+
+### From Order Domain
+- `OrderCreated` → Order confirmation
+- `OrderShipped` → Shipping notification
+- `OrderCompleted` → Delivery confirmation
+
+### From Payment Domain
+- `PaymentCaptured` → Payment confirmation
+- `PaymentFailed` → Payment failed alert
+
+### From Payout Domain
+- `EarningsAccrued` → Earnings notification
+- `PayoutCompleted` → Payout confirmation
+
+### From Maker Domain
+- `MakerVerified` → Verification approved
+
+### From Collector Domain
+- `MakerFollowed` → New follower notification
+
+### From Product Domain
+- `ProductPublished` → New product from followed maker
+
+### From Review Domain
+- `ReviewReceived` → New review notification
+
+### From Communication Domain
+- `MessageReceived` → New message notification
+
+---
+
+## 2. EVENTS EMITTED
+
+Notification Domain does NOT emit events (it is a leaf domain).
+
+---
+
+## DEPENDENCY MAP
+
+```
+Notification Domain:
+├── Consumes From: ALL DOMAINS
+│   ├── Auth → User events
+│   ├── Order → Order lifecycle events
+│   ├── Payment → Payment events
+│   ├── Payout → Earnings/payout events
+│   ├── Maker → Maker events
+│   ├── Collector → Engagement events
+│   ├── Product → Product events
+│   ├── Review → Review events
+│   └── Communication → Message events
+└── Provides To: NONE (leaf domain)
+```
+
+---
+
+**Note:** Notification Domain is a pure consumer - it creates notifications based on events from all other domains.

@@ -1,0 +1,248 @@
+# Notification Domain - Business Logic
+
+## Domain Purpose
+The Notification Domain manages re-engagement, communication, and user notifications. This domain handles all notification delivery across multiple channels.
+
+## Data Layer Ownership
+The Notification Domain owns and manages the following DynamoDB tables:
+- notifications: Notification records
+- notification_preferences: User notification preferences
+
+## Business Rules
+
+### 1. Notification Creation
+- Notifications are created from domain events
+- Notifications have types (order_confirmed, order_shipped, etc.)
+- Notifications include title, message, and payload
+- Notifications are created for specific users
+- Notifications start as unread
+
+### 2. Notification Types
+- Order notifications: confirmed, shipped, delivered, canceled
+- Message notifications: new_message, message_reply
+- Review notifications: review_received, review_approved
+- Product notifications: product_favorited, new_product_from_followed_maker
+- System notifications: account_verified, payout_completed
+- Notification types determine delivery channels
+
+### 3. Delivery Channels
+- In-app: Real-time notifications in application
+- Email: Email notifications (if enabled)
+- Push: Mobile push notifications (if enabled)
+- SMS: Text message notifications (if enabled)
+- Delivery channel is determined by user preferences
+
+### 4. Notification Preferences
+- Users can configure preferences per notification type
+- Preferences control which channels are used
+- Default preferences apply if not configured
+- Preferences can be updated at any time
+- Preferences are respected for all notifications
+
+### 5. Read and Click Tracking
+- Notifications track read_at timestamp
+- Notifications track clicked_at timestamp
+- Read status affects unread counts
+- Click tracking measures engagement
+- Unread notifications are highlighted in UI
+
+### 6. Notification Batching
+- Similar notifications can be batched
+- Batching reduces notification fatigue
+- Batch rules are configurable
+- Batched notifications are delivered together
+
+### 7. Notification Delivery
+- Delivery is asynchronous
+- Failed deliveries are retried
+- Delivery failures are logged
+- Delivery status is tracked
+- Delivery channels are independent
+
+## Data Layer Interactions
+
+### Read Operations
+- Read notifications by user_id
+- Read unread notifications by user_id
+- Read notifications by type
+- Read notification preferences by user_id
+- Read notification by id
+
+### Write Operations
+- Create notification
+- Mark notification as read
+- Mark notification as clicked
+- Update notification preferences
+- Delete notification (user action)
+
+### Data Integrity Rules
+- Notifications must reference valid user_id from Identity Domain
+- Notification payload must be valid JSON
+- Notification types must be from approved list
+- Preferences must reference valid user_id
+- Read/click timestamps are optional but tracked
+
+## Event-Driven Communication
+
+### Events Published
+- NotificationCreated: When a notification is created
+- NotificationDelivered: When notification is successfully delivered
+- NotificationFailed: When notification delivery fails
+- PreferencesUpdated: When user updates preferences
+
+### Events Consumed
+- OrderConfirmed: From Order Domain - creates order confirmation notification
+- OrderShipped: From Order Domain - creates shipping notification
+- OrderDelivered: From Order Domain - creates delivery notification
+- OrderCanceled: From Order Domain - creates cancellation notification
+- NewMessage: From Communication Domain - creates message notification
+- ReviewReceived: From Review & Trust Domain - creates review notification
+- PayoutCompleted: From Payout Domain - creates payout notification
+- ProductPublished: From Product Domain - creates product notification
+- MakerFollowed: From Collector Domain - may trigger notifications
+
+## Cross-Domain Boundaries
+
+### What This Domain Owns
+- Notification records
+- Notification preferences
+- Delivery channels
+- Read/click tracking
+
+### What This Domain Does NOT Own
+- Business decisions (other domains)
+- User profiles (Collector/Maker Domains)
+- Order data (Order Domain)
+- Message content (Communication Domain)
+
+## Business Logic Constraints
+1. Notifications are created from events only
+2. Notification preferences must be respected
+3. Delivery failures must be retried
+4. Read/click tracking is optional but recommended
+5. Notification types must be from approved list
+6. Notifications cannot be modified after creation
+7. Delivery channels are independent
+8. Batching rules must be configurable
+
+## Domain Structure & Implementation
+
+### Directory Structure
+The Notification Domain follows a structure similar to `/Users/jred/AWS/aedcor-backend/support_backend/lib`:
+
+```
+lib/
+├── constructs/
+│   ├── dynamodb/
+│   │   └── notification-tables/
+│   │       └── notification-tables-construct.ts
+│   ├── lambda/
+│   │   └── notification/
+│   │       ├── create-notification/
+│   │       ├── get-notifications/
+│   │       ├── mark-notification-read/
+│   │       ├── update-preferences/
+│   │       ├── deliver-notification/
+│   │       └── event-consumer/
+│   ├── sns/
+│   │   └── notification-topics/
+│   │       └── notification-topics-construct.ts
+│   └── appsync/
+│       └── notification-appsync/
+│           └── notification-appsync-construct.ts
+├── functions/
+│   ├── lambda/
+│   │   └── notification/
+│   │       ├── create-notification/
+│   │       │   └── create-notification-lambda.js
+│   │       ├── get-notifications/
+│   │       │   └── get-notifications-lambda.js
+│   │       ├── mark-notification-read/
+│   │       │   └── mark-notification-read-lambda.js
+│   │       ├── update-preferences/
+│   │       │   └── update-preferences-lambda.js
+│   │       ├── deliver-notification/
+│   │       │   └── deliver-notification-lambda.js
+│   │       └── event-consumer/
+│   │           └── event-consumer-lambda.js
+│   └── appsync-resolvers/
+│       └── notification/
+│           ├── get-notifications-resolver.js
+│           └── update-preferences-resolver.js
+└── utils/
+    ├── response-utils.ts
+    ├── validation-utils.ts
+    ├── delivery-client.ts
+    ├── batching-utils.ts
+    └── event-publisher.ts
+```
+
+### Data Layer Interaction Patterns
+
+#### Direct Data Access
+- **Notifications**: Direct DynamoDB access via `notifications` table using `notification_id` as partition key
+- **Notification Preferences**: Direct DynamoDB access via `notification_preferences` table using `user_id` as partition key
+
+#### Query Patterns
+- **Get notification**: Single item read by `notification_id`
+- **List notifications by user**: GSI query by `user_id`
+- **List unread notifications**: GSI query by `user_id` with filter on `read_at` = null
+- **List notifications by type**: GSI query by `type`
+- **Get preferences**: Single item read by `user_id`
+
+#### Write Patterns
+- **Create notification**: PutItem with preference check
+- **Mark notification read**: UpdateItem with `read_at` timestamp
+- **Mark notification clicked**: UpdateItem with `clicked_at` timestamp
+- **Update preferences**: PutItem with preference validation
+- **Delete notification**: DeleteItem (user action)
+
+### Business Logic Implementation
+
+#### Notification Creation
+- Notifications created from domain events via Event Consumer Lambda
+- Notification type determines delivery channels
+- Preferences checked before notification creation
+- Batching logic applied for similar notifications
+
+#### Delivery Channels
+- **In-app**: Real-time via AppSync subscriptions or WebSocket
+- **Email**: Sent via SES (Simple Email Service)
+- **Push**: Sent via SNS to mobile devices
+- **SMS**: Sent via SNS to phone numbers
+- Delivery handled asynchronously by Delivery Lambda
+
+#### Preference Management
+- Default preferences applied if user hasn't configured
+- Preferences per notification type
+- Preferences control which channels are used
+- Preferences updated via Update Preferences Lambda
+
+#### Batching
+- Similar notifications batched together
+- Batching rules configurable per notification type
+- Batched notifications delivered together
+- Batching reduces notification fatigue
+
+#### Event Handling
+- **Event Consumer Lambda**: Processes events from other domains
+  - `OrderConfirmed` → Creates order confirmation notification
+  - `OrderShipped` → Creates shipping notification
+  - `OrderDelivered` → Creates delivery notification
+  - `OrderCanceled` → Creates cancellation notification
+  - `NewMessage` → Creates message notification
+  - `ReviewReceived` → Creates review notification
+  - `PayoutCompleted` → Creates payout notification
+
+#### Data Consistency
+- Notification creation is eventually consistent (from events)
+- Read/click tracking is immediately consistent
+- Preferences are immediately consistent
+- Delivery status updated asynchronously
+
+#### Error Handling
+- Invalid notification type → Return 400 Bad Request
+- Invalid user_id → Return 404 Not Found
+- Delivery failure → Retry with exponential backoff
+- Preference validation failure → Return 400 Bad Request
+- Notification not found → Return 404 Not Found

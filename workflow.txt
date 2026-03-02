@@ -1,0 +1,236 @@
+================================================================================
+NOTIFICATION DOMAIN - WORKFLOW DOCUMENTATION
+================================================================================
+
+1. WORKFLOW
+================================================================================
+
+The Notification Domain manages re-engagement, communication, and user notifications across multiple channels.
+
+Main Workflows:
+
+1. Notification Creation
+   - Create notification from domain events
+   - Notification types (order, message, review, product, system)
+   - Notifications created asynchronously from events
+
+2. Notification Delivery
+   - Deliver notification via multiple channels
+   - Channels: in-app, email, push, SMS
+   - Delivery based on user preferences
+
+3. Notification Retrieval
+   - Get notifications for user
+   - List unread notifications
+   - Paginated notification history
+
+4. Read and Click Tracking
+   - Mark notification as read
+   - Track notification clicks
+   - Update unread counts
+
+5. Preference Management
+   - Get notification preferences
+   - Update notification preferences
+   - Preferences control delivery channels per notification type
+
+================================================================================
+2. OPERATIONS TYPE
+================================================================================
+
+Operation Types:
+- Notification Operations: Create notification, get notifications, list notifications
+- Delivery Operations: Deliver notification (event-driven)
+- Read Operations: Mark notification as read
+- Preference Operations: Get preferences, update preferences
+
+API Type: GraphQL API (AppSync)
+
+================================================================================
+3. OUTPUT OF EACH OPERATION (NO CODE, JUST DESCRIPTION)
+================================================================================
+
+3.1 Create Notification Operation
+   Input: User ID, notification type, title, message, payload
+   Process:
+     - Checks user notification preferences
+     - Creates notification record in notifications table
+     - Sets status to UNREAD
+     - Triggers delivery process based on preferences
+   Output:
+     - Success: Notification object with notification_id, user_id, type, title, message, payload, created_at, read_at
+     - Error: Invalid notification type, invalid user_id
+
+3.2 Get Notifications Operation
+   Input: User ID, pagination parameters
+   Process:
+     - Queries notifications table by user_id
+     - Returns paginated list of notifications
+     - Sorted by created_at (newest first)
+   Output:
+     - Success: List of notifications with notification_id, type, title, message, payload, read_at, created_at, pagination info
+     - Error: Invalid pagination parameters
+
+3.3 Get Unread Notifications Operation
+   Input: User ID, pagination parameters
+   Process:
+     - Queries notifications table by user_id with filter for read_at = null
+     - Returns paginated list of unread notifications
+   Output:
+     - Success: List of unread notifications with notification_id, type, title, message, created_at, pagination info
+     - Error: Invalid pagination parameters
+
+3.4 Mark Notification Read Operation
+   Input: Notification ID, user ID
+   Process:
+     - Validates notification belongs to user
+     - Updates notification read_at timestamp
+     - Updates unread count for user
+   Output:
+     - Success: Updated notification object with read_at timestamp
+     - Error: Notification not found, unauthorized access
+
+3.5 Deliver Notification Operation (Event-Driven)
+   Input: Notification data from event
+   Process:
+     - Checks user preferences for notification type
+     - Delivers via enabled channels (in-app, email, push, SMS)
+     - Updates delivery status
+     - Logs delivery attempts
+   Output:
+     - Success: Delivery confirmation with channels used
+     - Error: Delivery failure (retried asynchronously)
+
+3.6 Get Notification Preferences Operation
+   Input: User ID
+   Process:
+     - Retrieves preferences from notification_preferences table
+     - Returns default preferences if not configured
+   Output:
+     - Success: Preferences object with user_id, preferences per notification type, channels enabled
+     - Error: User not found
+
+3.7 Update Notification Preferences Operation
+   Input: User ID, preferences object
+   Process:
+     - Validates preferences data
+     - Updates or creates preferences record
+     - Updates updated_at timestamp
+   Output:
+     - Success: Updated preferences object
+     - Error: Validation errors, invalid preference values
+
+================================================================================
+4. GENERATED EVENTS - WHO, HOW TO BE COMMUNICATED WITH WHICH OTHER DOMAIN
+================================================================================
+
+Events Published:
+- NotificationCreated: Published when notification is created
+  - Who: Notification Domain
+  - How: EventBridge event bus
+  - Communicated with: Analytics Domain (if exists)
+  - Purpose: Track notification creation for analytics
+  - Event Data: notification_id, user_id, type, created_at
+
+- NotificationDelivered: Published when notification is successfully delivered
+  - Who: Notification Domain
+  - How: EventBridge event bus
+  - Communicated with: Analytics Domain (if exists)
+  - Purpose: Track delivery success
+  - Event Data: notification_id, user_id, channels_used, delivered_at
+
+- NotificationFailed: Published when notification delivery fails
+  - Who: Notification Domain
+  - How: EventBridge event bus
+  - Communicated with: Analytics Domain, Alerting System (if exists)
+  - Purpose: Track delivery failures for monitoring
+  - Event Data: notification_id, user_id, failure_reason, failed_at
+
+- PreferencesUpdated: Published when user updates preferences
+  - Who: Notification Domain
+  - How: EventBridge event bus
+  - Communicated with: Analytics Domain (if exists)
+  - Purpose: Track preference changes
+  - Event Data: user_id, updated_preferences, updated_at
+
+Events Consumed:
+- OrderConfirmed: From Order Domain
+  - Purpose: Create order confirmation notification
+  - Action: Create notification with type "order_confirmed", deliver to collector
+
+- OrderShipped: From Order Domain
+  - Purpose: Create shipping notification
+  - Action: Create notification with type "order_shipped", deliver to collector
+
+- OrderDelivered: From Order Domain
+  - Purpose: Create delivery notification
+  - Action: Create notification with type "order_delivered", deliver to collector
+
+- OrderCanceled: From Order Domain
+  - Purpose: Create cancellation notification
+  - Action: Create notification with type "order_canceled", deliver to collector and maker
+
+- NewMessage: From Communication Domain
+  - Purpose: Create message notification
+  - Action: Create notification with type "new_message", deliver to message recipient
+
+- MessageRead: From Communication Domain
+  - Purpose: Create read receipt notification (optional)
+  - Action: Create notification with type "message_read", deliver to message sender
+
+- ReviewReceived: From Review Trust Domain
+  - Purpose: Create review notification
+  - Action: Create notification with type "review_received", deliver to maker
+
+- ReviewApproved: From Review Trust Domain
+  - Purpose: Create review approval notification
+  - Action: Create notification with type "review_approved", deliver to reviewer
+
+- PayoutCompleted: From Payout Domain
+  - Purpose: Create payout notification
+  - Action: Create notification with type "payout_completed", deliver to maker
+
+- ProductPublished: From Product Domain
+  - Purpose: Create product notification for followers
+  - Action: Create notification with type "new_product_from_followed_maker", deliver to followers
+
+- MakerFollowed: From Collector Domain
+  - Purpose: Create follow notification (optional)
+  - Action: Create notification with type "maker_followed", deliver to maker
+
+- StreamStarted: From Live Streaming Domain
+  - Purpose: Create stream notification for followers
+  - Action: Create notification with type "stream_started", deliver to followers
+
+- UserVerified: From Auth Essentials / Identity Domain
+  - Purpose: Create verification notification
+  - Action: Create notification with type "account_verified", deliver to user
+
+- VerificationApproved: From Verification Trust Domain
+  - Purpose: Create verification approval notification
+  - Action: Create notification with type "verification_approved", deliver to maker
+
+Cross-Domain Communication:
+- Order Domain: Consumes OrderConfirmed, OrderShipped, OrderDelivered, OrderCanceled events
+- Communication Domain: Consumes NewMessage, MessageRead events
+- Review Trust Domain: Consumes ReviewReceived, ReviewApproved events
+- Payout Domain: Consumes PayoutCompleted events
+- Product Domain: Consumes ProductPublished events
+- Collector Domain: Consumes MakerFollowed events
+- Live Streaming Domain: Consumes StreamStarted events
+- Auth Essentials / Identity Domain: Consumes UserVerified events
+- Verification Trust Domain: Consumes VerificationApproved events
+
+Communication Method:
+- EventBridge: Primary method for consuming events from other domains
+- AppSync GraphQL: Direct queries from frontend
+- SNS: For push notifications and SMS delivery
+- SES: For email delivery
+- DynamoDB: Notification and preference data stored in domain tables
+- SSM Parameters: No exports (read-only domain)
+
+Note: This domain is primarily event-driven and consumes events from other domains to create and deliver notifications.
+
+================================================================================
+END OF DOCUMENTATION
+================================================================================

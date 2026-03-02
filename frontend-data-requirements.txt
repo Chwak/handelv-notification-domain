@@ -1,0 +1,55 @@
+# Notification Domain - Frontend Data Requirements
+
+## Overview
+All data captured from frontend for notification preferences.
+
+**Domain:** Notification Domain
+**Purpose:** Multi-channel notifications (email, push, SMS)
+**Last Updated:** 2026-01-31
+
+---
+
+## 1. NOTIFICATION PREFERENCES
+
+### 1.1 Update Preferences
+**Endpoint**: `PUT /notifications/preferences`
+
+```typescript
+{
+  notificationType: string,             // e.g., "order_confirmed"
+  emailEnabled: boolean,
+  pushEnabled: boolean,
+  smsEnabled: boolean,
+}
+```
+
+### 1.2 Get Preferences
+**Endpoint**: `GET /notifications/preferences`
+
+---
+
+## 2. NOTIFICATION MANAGEMENT
+
+### 2.1 Mark as Read
+**Endpoint**: `PUT /notifications/{notificationId}/read`
+
+### 2.2 Get Notifications
+**Endpoint**: `GET /notifications`
+
+### 2.3 Get Unread Count
+**Endpoint**: `GET /notifications/unread/count`
+
+---
+
+## API Endpoints
+
+- `GET /notifications` - List all notifications
+- `GET /notifications/unread` - List unread notifications
+- `GET /notifications/unread/count` - Get unread count
+- `PUT /notifications/{id}/read` - Mark as read
+- `GET /notifications/preferences` - Get preferences
+- `PUT /notifications/preferences` - Update preferences
+
+---
+
+**Note:** Notifications are primarily event-driven. See `inter-domain-data-requirements.txt`.

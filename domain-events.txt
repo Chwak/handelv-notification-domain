@@ -1,0 +1,149 @@
+================================================================================
+NOTIFICATION DOMAIN - EVENT CATALOG
+================================================================================
+Domain: notification-domain
+Event Source: hand-made.notification-domain
+Last Updated: 2026-02-16
+
+================================================================================
+PRODUCED EVENTS
+================================================================================
+
+Event: notification.sent.v1
+Status: 🔲 PLANNED
+--------------------------------------------------------------------------------
+Description:
+  Published when a notification is successfully delivered to user.
+
+Trigger: TBD
+Republish Lambda: TBD
+Payload Schema: TBD
+Consumers: analytics-domain
+
+--------------------------------------------------------------------------------
+
+Event: notification.read.v1
+Status: 🔲 PLANNED
+--------------------------------------------------------------------------------
+Description:
+  Published when user reads a notification.
+
+Trigger: TBD
+Republish Lambda: TBD
+Payload Schema: TBD
+Consumers: analytics-domain
+
+================================================================================
+CONSUMED EVENTS
+================================================================================
+
+Event: order.created.v1
+Source: hand-made.order-domain
+Status: ✅ IMPLEMENTED & ACTIVE
+--------------------------------------------------------------------------------
+Handler Lambda: order-created-consumer-lambda
+Action: Create order confirmation notification for buyer, new order notifications for makers
+Handler Location: lib/functions/lambda/order-created-consumer-lambda.ts
+SQS Queue: order-created-consumer-queue
+EventBridge Rule: Routes order.created.v1 → SQS queue
+
+Idempotency:
+  Key: orderId
+  TTL: 24 hours
+  Purpose: Prevent duplicate notifications if event retried
+
+Notifications Created:
+  1. Order Confirmation (for collector/buyer)
+     - Type: order.confirmation
+     - Message: Shows total amount and order number
+  
+  2. New Order Notifications (for each maker)
+     - Type: new.order
+     - Message: Notifies maker of new order in shop
+
+Published Events:
+  - notification.sent.v1 (after each notification created)
+
+Error Handling:
+  - DLQ: order-created-consumer-dlq
+  - Max Retries: 3
+  - Log Retention: ONE_WEEK
+
+--------------------------------------------------------------------------------
+
+Event: order.paid.v1
+Source: hand-made.order-domain
+Status: ✅ IMPLEMENTED & ACTIVE
+--------------------------------------------------------------------------------
+Handler Lambda: order-paid-consumer-lambda
+Action: Create payment receipt notification for buyer
+Handler Location: lib/functions/lambda/order-paid-consumer-lambda.ts
+SQS Queue: order-paid-consumer-queue
+EventBridge Rule: Routes order.paid.v1 → SQS queue
+
+Idempotency:
+  Key: orderId
+  TTL: 24 hours
+
+Notifications Created:
+  1. Payment Receipt (for collector/buyer)
+     - Type: payment.receipt
+     - Message: Shows payment status, amount, and currency
+
+Published Events:
+  - notification.sent.v1
+
+Error Handling:
+  - DLQ: order-paid-consumer-dlq
+  - Max Retries: 3
+  - Log Retention: ONE_WEEK
+
+--------------------------------------------------------------------------------
+
+Event: order.stock.confirmed.v1
+Source: hand-made.order-domain
+Status: ✅ IMPLEMENTED & ACTIVE
+--------------------------------------------------------------------------------
+Handler Lambda: order-stock-confirmed-consumer-lambda
+Action: Notify makers to prepare items for fulfillment
+Handler Location: lib/functions/lambda/order-stock-confirmed-consumer-lambda.ts
+SQS Queue: order-stock-confirmed-consumer-queue
+EventBridge Rule: Routes order.stock.confirmed.v1 → SQS queue
+
+Idempotency:
+  Key: orderId
+  TTL: 24 hours
+
+Notifications Created:
+  1. Order Ready to Fulfill (for each maker)
+     - Type: order.fulfillment
+     - Message: Shows items to fulfill and their quantities
+     - De-duplicated: One notification per maker even if multiple items
+
+Published Events:
+  - notification.sent.v1
+
+Error Handling:
+  - DLQ: order-stock-confirmed-consumer-dlq
+  - Max Retries: 3
+  - Log Retention: ONE_WEEK
+
+--------------------------------------------------------------------------------
+
+Event: review.created.v1
+Source: hand-made.review-trust-domain
+Status: 🔲 PLANNED
+--------------------------------------------------------------------------------
+Handler Lambda: TBD
+Action: Notify maker of new review
+
+--------------------------------------------------------------------------------
+
+Event: payout.completed.v1
+Source: hand-made.payout-domain
+Status: 🔲 PLANNED
+--------------------------------------------------------------------------------
+Handler Lambda: TBD
+Action: Notify maker of successful payout
+
+================================================================================

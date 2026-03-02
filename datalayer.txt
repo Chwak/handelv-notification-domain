@@ -1,0 +1,224 @@
+# Notification Domain - Data Layer Design
+
+**Purpose:** Re-engagement, communication, and user notifications.
+
+**Database:** `notification_db`
+
+**CDK Stack:** `notification-stack`
+
+---
+
+## Tables
+
+### `notifications`
+
+**Partition Key:** `userId` (String)
+**Sort Key:** `notificationId` (String)
+
+**Attributes:**
+* `user_id` (String, PK)
+* `notification_id` (String, SK, UUID)
+* `type` (String) - Notification type:
+  * "order_confirmed"
+  * "order_shipped"
+  * "order_delivered"
+  * "new_message"
+  * "review_received"
+  * "maker_verified"
+  * "product_favorited"
+  * "price_drop"
+  * "new_product_from_followed_maker"
+* `title` (String) - Notification title
+* `message` (String) - Notification body text
+* `payload` (Map) - Additional data:
+  * `order_id` (String, optional)
+  * `product_id` (String, optional)
+  * `maker_user_id` (String, optional)
+  * `conversation_id` (String, optional)
+  * `review_id` (String, optional)
+* `read_at` (String, ISO 8601, optional)
+* `clicked_at` (String, ISO 8601, optional)
+* `created_at` (String, ISO 8601)
+
+**GSI:**
+* `GSI1`: `userId` (PK), `readAt` (SK) - Unread notifications
+  * **Use Case:** Get unread notifications count, unread notifications list
+* `GSI2`: `type` (PK), `createdAt` (SK) - Notifications by type
+  * **Use Case:** Analytics, notification type filtering
+
+### `notification_preferences`
+
+**Partition Key:** `userId` (String)
+**Sort Key:** `notificationType` (String)
+
+**Attributes:**
+* `userId` (String, PK)
+* `notificationType` (String, SK)
+* `emailEnabled` (Boolean)
+* `pushEnabled` (Boolean)
+* `smsEnabled` (Boolean)
+* `inAppEnabled` (Boolean)
+* `createdAt` (String, ISO 8601)
+* `updatedAt` (String, ISO 8601)
+
+**GSI:** None
+
+**TTL:** None
+
+---
+
+## Query Patterns
+
+### Get User's Notifications
+**Table:** `notifications`
+**Operation:** Query
+**Key:** `user_id`, sort by `created_at` DESC
+**Use Case:** Notifications page
+
+### Get Unread Notifications
+**Table:** `notifications`
+**Operation:** Query on GSI1
+**Key:** `user_id`, filter by `read_at` is null
+**Use Case:** Unread notifications badge, unread list
+
+### Get Notification Preferences
+**Table:** `notification_preferences`
+**Operation:** GetItem
+**Key:** `user_id`
+**Use Case:** Load user preferences for notification creation
+
+### Mark Notification as Read
+**Table:** `notifications`
+**Operation:** UpdateItem
+**Key:** `user_id`, `notification_id`
+**Update:** Set `read_at` to current timestamp
+
+---
+
+## Events Consumed
+
+This domain consumes events from other domains:
+
+* `OrderConfirmed` (from Order Domain)
+  * **Action:** Create "order_confirmed" notification for collector
+
+* `OrderShipped` (from Order Domain)
+  * **Action:** Create "order_shipped" notification for collector
+
+* `OrderDelivered` (from Order Domain)
+  * **Action:** Create "order_delivered" notification for collector
+
+* `OrderCanceled` (from Order Domain)
+  * **Action:** Create "order_canceled" notification for collector
+
+* `MessageSent` (from Communication Domain)
+  * **Action:** Create "new_message" notification for recipient
+
+* `ReviewSubmitted` (from Review Trust Domain)
+  * **Action:** Create "review_received" notification for maker
+
+* `ReviewApproved` (from Review Trust Domain)
+  * **Action:** Create "review_approved" notification for maker
+
+* `PayoutCompleted` (from Payout Domain)
+  * **Action:** Create "payout_completed" notification for maker
+
+* `ProductPublished` (from Product Domain)
+  * **Action:** Create "new_product_from_followed_maker" notification for followers
+
+* `MakerFollowed` (from Collector Domain)
+  * **Action:** Create "new_follower" notification for maker
+
+* `StreamStarted` (from Live Streaming Domain)
+  * **Action:** Create "live_stream_started" notification for followers
+
+* `VerificationApproved` (from Verification Trust Domain)
+  * **Action:** Create "verification_approved" notification for maker
+
+* `UserVerified` (from Auth Essentials / Identity Domain)
+  * **Action:** Create "account_verified" notification for user
+
+---
+
+## Events Published
+
+This domain does not publish events (notification-only domain).
+
+---
+
+## Design Considerations
+
+1. **Multi-Channel:** Notifications can be delivered via email, push, or SMS. Preferences stored in `notification_preferences`.
+
+2. **TTL:** Notifications auto-delete after 90 days to manage storage costs.
+
+3. **Read/Unread Tracking:** `read_at` timestamp tracks if notification was read. Null = unread.
+
+4. **Click Tracking:** `clicked_at` tracks if user clicked notification (for analytics).
+
+5. **Payload Flexibility:** `payload` Map allows different notification types to include relevant data.
+
+6. **Preference Defaults:** New users get default preferences (email: true, push: true, SMS: false).
+
+7. **Notification Types:** Comprehensive list covers all user actions and events.
+
+---
+
+## Access Patterns
+
+### High Frequency
+* Get unread notifications (notification badge, header)
+* Mark notification as read (when user opens notification)
+
+### Medium Frequency
+* Get all notifications (notifications page)
+* Update notification preferences (settings page)
+
+### Low Frequency
+* Create notification (via events, background process)
+
+---
+
+## Data Consistency
+
+* **Eventually Consistent:** Notifications created via events. Typical delay: < 1 second.
+
+---
+
+## Delivery Channels
+
+### Email
+* **Service:** SES (Simple Email Service)
+* **Template:** HTML email templates
+* **Trigger:** Lambda function on notification creation
+
+### Push
+* **Service:** SNS (Simple Notification Service) + APNS/FCM
+* **Trigger:** Lambda function on notification creation
+
+### SMS
+* **Service:** SNS (Simple Notification Service)
+* **Trigger:** Lambda function on notification creation (if SMS enabled)
+
+---
+
+## Next Steps
+
+1. **Create CDK stack** with DynamoDB tables
+2. **Set up EventBridge rules** for consumed events
+3. **Set up SES** for email delivery
+4. **Set up SNS** for push/SMS delivery
+5. **Create Lambda functions** for:
+   * Notification creation (listens to events)
+   * Email delivery
+   * Push notification delivery
+   * SMS delivery
+   * Notification preferences management
+6. **Build API Gateway** endpoints:
+   * `GET /notifications`
+   * `GET /notifications/unread`
+   * `GET /notifications/unread/count`
+   * `PUT /notifications/{notification_id}/read`
+   * `PUT /notifications/{notification_id}/clicked`
+   * `GET /notifications/preferences`
+   * `PUT /notifications/preferences`

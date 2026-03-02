@@ -1,0 +1,345 @@
+================================================================================
+NOTIFICATION DOMAIN - INPUT VALIDATION RULES
+================================================================================
+
+This document defines all input validation rules for the Notification Domain GraphQL API.
+All mutations and queries must validate inputs according to these rules.
+
+================================================================================
+MUTATION: markNotificationRead
+================================================================================
+
+Input:
+- notificationId: ID! (required)
+
+Validation Rules:
+1. notificationId:
+   - Must be a valid UUID or ID format
+   - Cannot be null or empty
+   - Must reference an existing notification
+
+Business Rules:
+- Notification must exist
+- User must be the owner of the notification (userId matches authenticated user)
+- If notification is already read, operation is idempotent
+- Set readAt timestamp
+- Decrement unread count for user
+
+Error Responses:
+- 400 Bad Request: Invalid notificationId format
+- 401 Unauthorized: Not authenticated
+- 403 Forbidden: Cannot mark notification as read (not owner)
+- 404 Not Found: Notification not found
+
+================================================================================
+MUTATION: markNotificationClicked
+================================================================================
+
+Input:
+- notificationId: ID! (required)
+
+Validation Rules:
+1. notificationId:
+   - Must be a valid UUID or ID format
+   - Cannot be null or empty
+   - Must reference an existing notification
+
+Business Rules:
+- Notification must exist
+- User must be the owner of the notification
+- If notification is already clicked, operation is idempotent
+- Set clickedAt timestamp
+- Track click analytics
+
+Error Responses:
+- 400 Bad Request: Invalid notificationId format
+- 401 Unauthorized: Not authenticated
+- 403 Forbidden: Cannot mark notification as clicked (not owner)
+- 404 Not Found: Notification not found
+
+================================================================================
+MUTATION: updateNotificationPreferences
+================================================================================
+
+Input: UpdateNotificationPreferencesInput!
+- userId: ID! (required)
+- preferences: [NotificationTypePreferenceInput!]! (required)
+
+Validation Rules:
+1. userId:
+   - Must be a valid UUID or ID format
+   - Cannot be null or empty
+   - Must match authenticated user's ID
+
+2. preferences:
+   - Must be a non-empty array
+   - Maximum 50 preferences (one per notification type)
+   - Each preference must have:
+     * type: NotificationType! (required)
+      - Must be one of: ORDER_CONFIRMED, ORDER_SHIPPED, ORDER_DELIVERED, ORDER_CANCELED, NEW_MESSAGE, MESSAGE_REPLY, REVIEW_RECEIVED, REVIEW_APPROVED, PRODUCT_FAVORITED, NEW_PRODUCT_FROM_FOLLOWED_MAKER, ACCOUNT_VERIFIED, PAYOUT_COMPLETED
+       - Case-sensitive enum value
+     * inApp: Boolean (optional)
+       - Must be true or false if provided
+       - Default: true if not provided
+     * email: Boolean (optional)
+       - Must be true or false if provided
+       - Default: true if not provided
+     * push: Boolean (optional)
+       - Must be true or false if provided
+       - Default: true if not provided
+     * sms: Boolean (optional)
+       - Must be true or false if provided
+       - Default: false if not provided
+   - No duplicate notification types in array
+
+Business Rules:
+- User can only update their own preferences
+- Preferences replace existing preferences (not merge)
+- At least one delivery channel (inApp, email, push, sms) must be enabled per type
+- Preferences are saved and used for future notifications
+
+Error Responses:
+- 400 Bad Request: Invalid input format
+- 401 Unauthorized: Not authenticated
+- 403 Forbidden: Cannot update other user's preferences
+- 422 Unprocessable Entity: Validation failed (duplicate types, invalid channels, etc.)
+
+================================================================================
+MUTATION: deleteNotification
+================================================================================
+
+Input:
+- notificationId: ID! (required)
+
+Validation Rules:
+1. notificationId:
+   - Must be a valid UUID or ID format
+   - Cannot be null or empty
+   - Must reference an existing notification
+
+Business Rules:
+- Notification must exist
+- User must be the owner of the notification
+- Notification is soft-deleted (not permanently removed)
+- Decrement unread count if notification was unread
+
+Error Responses:
+- 400 Bad Request: Invalid notificationId format
+- 401 Unauthorized: Not authenticated
+- 403 Forbidden: Cannot delete notification (not owner)
+- 404 Not Found: Notification not found
+
+================================================================================
+QUERY: getNotifications
+================================================================================
+
+Input:
+- userId: ID! (required)
+- unreadOnly: Boolean (optional)
+- type: NotificationType (optional)
+- limit: Int (optional, default: 20, max: 100)
+- nextToken: String (optional)
+
+Validation Rules:
+1. userId:
+   - Must be a valid UUID or ID format
+   - Cannot be null or empty
+   - Must match authenticated user's ID (or user must have admin permissions)
+
+2. unreadOnly (if provided):
+   - Must be true or false
+   - Default: false if not provided
+
+3. type (if provided):
+   - Must be one of: ORDER_CONFIRMED, ORDER_SHIPPED, ORDER_DELIVERED, ORDER_CANCELED, NEW_MESSAGE, MESSAGE_REPLY, REVIEW_RECEIVED, REVIEW_APPROVED, PRODUCT_FAVORITED, NEW_PRODUCT_FROM_FOLLOWED_MAKER, ACCOUNT_VERIFIED, PAYOUT_COMPLETED
+   - Case-sensitive enum value
+
+4. limit:
+   - Must be between 1 and 100
+   - Default: 20 if not provided
+   - Must be a positive integer
+
+5. nextToken:
+   - Must be a valid pagination token if provided
+   - Cannot be empty string
+
+Business Rules:
+- User can only list their own notifications (unless admin)
+- Results filtered by unreadOnly and type if provided
+- Results sorted by createdAt descending (most recent first)
+- Return unread count in response
+
+Error Responses:
+- 400 Bad Request: Invalid input format
+- 401 Unauthorized: Not authenticated
+- 403 Forbidden: Cannot access other user's notifications
+
+================================================================================
+QUERY: getNotificationPreferences
+================================================================================
+
+Input:
+- userId: ID! (required)
+
+Validation Rules:
+1. userId:
+   - Must be a valid UUID or ID format
+   - Cannot be null or empty
+   - Must match authenticated user's ID (or user must have admin permissions)
+
+Business Rules:
+- User can only view their own preferences (unless admin)
+- Returns all notification type preferences
+- Returns default preferences if none set
+
+Error Responses:
+- 400 Bad Request: Invalid userId format
+- 401 Unauthorized: Not authenticated
+- 403 Forbidden: Cannot access other user's preferences
+
+================================================================================
+QUERY: getUnreadCount
+================================================================================
+
+Input:
+- userId: ID! (required)
+
+Validation Rules:
+1. userId:
+   - Must be a valid UUID or ID format
+   - Cannot be null or empty
+   - Must match authenticated user's ID (or user must have admin permissions)
+
+Business Rules:
+- User can only view their own unread count (unless admin)
+- Returns total count of unread notifications
+- Count includes notifications where readAt is null
+
+Error Responses:
+- 400 Bad Request: Invalid userId format
+- 401 Unauthorized: Not authenticated
+- 403 Forbidden: Cannot access other user's unread count
+
+================================================================================
+COMMON VALIDATION PATTERNS
+================================================================================
+
+1. ID Validation:
+   - All ID fields must be valid UUID v4 format or domain-specific ID format
+   - Cannot be null, empty, or whitespace-only
+
+2. Notification Type Validation:
+   - Must be valid enum value
+   - Case-sensitive
+   - Must match defined notification types
+
+3. Boolean Validation:
+   - Must be true or false
+   - Cannot be null (use default values)
+   - Validate boolean type strictly
+
+4. Array Validation:
+   - Validate array is not null
+   - Check array length limits
+   - Validate each array element
+   - Remove duplicates
+
+5. Pagination:
+   - limit: Must be between 1 and 100, default 20
+   - nextToken: Must be valid if provided
+   - Return nextToken for pagination continuation
+
+6. Authentication & Authorization:
+   - All mutations and queries require valid authentication token
+   - Users can only access their own notifications
+   - Admins can access all notifications
+
+7. Rate Limiting:
+   - Mark read: 100 per hour per user
+   - Mark clicked: 100 per hour per user
+   - Update preferences: 10 per hour per user
+   - Get notifications: 200 per hour per user
+
+================================================================================
+NOTIFICATION DELIVERY RULES
+================================================================================
+
+1. Delivery Channels:
+   - inApp: In-app notification (always available)
+   - email: Email notification (requires verified email)
+   - push: Push notification (requires device registration)
+   - sms: SMS notification (requires verified phone, optional)
+
+2. Preference Enforcement:
+   - Notifications are only sent via enabled channels
+   - At least one channel must be enabled per notification type
+   - Default preferences apply if not explicitly set
+
+3. Notification Creation:
+   - Notifications are created by domain events
+   - Notifications respect user preferences
+   - Notifications are delivered asynchronously
+
+================================================================================
+NOTIFICATION TYPES
+================================================================================
+
+1. Order Notifications:
+   - ORDER_CONFIRMED: Order payment confirmed
+   - ORDER_SHIPPED: Order has been shipped
+   - ORDER_DELIVERED: Order has been delivered
+   - ORDER_CANCELED: Order has been canceled
+
+2. Message Notifications:
+   - NEW_MESSAGE: New message received
+   - MESSAGE_REPLY: Reply to message received
+
+3. Review Notifications:
+   - REVIEW_RECEIVED: New review received
+   - REVIEW_APPROVED: Review has been approved
+
+4. Engagement Notifications:
+   - PRODUCT_FAVORITED: Product has been favorited
+   - NEW_PRODUCT_FROM_FOLLOWED_MAKER: New product from followed maker
+
+5. Account Notifications:
+   - ACCOUNT_VERIFIED: Account verification completed
+   - PAYOUT_COMPLETED: Payout has been completed
+
+================================================================================
+CROSS-DOMAIN VALIDATION
+================================================================================
+
+1. User Validation:
+   - Validate userId exists via Auth Essentials Domain
+   - Check user account is active
+   - Verify user has verified email/phone for email/SMS notifications
+   - Handle gracefully if user not found (404)
+
+2. Event Validation:
+   - Notifications are created from domain events
+   - Validate event payload
+   - Ensure event data matches notification requirements
+
+================================================================================
+ERROR RESPONSE FORMAT
+================================================================================
+
+All validation errors should return structured error responses:
+
+{
+  "errors": [
+    {
+      "message": "Validation failed",
+      "extensions": {
+        "code": "VALIDATION_ERROR",
+        "field": "preferences",
+        "reason": "Duplicate notification type in preferences array"
+      }
+    }
+  ]
+}
+
+================================================================================
+END OF DOCUMENTATION
+================================================================================

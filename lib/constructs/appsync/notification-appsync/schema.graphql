@@ -1,0 +1,80 @@
+type Query @aws_cognito_user_pools {
+  getNotifications(
+    userId: ID!
+    unreadOnly: Boolean
+    type: NotificationType
+    limit: Int
+    nextToken: String
+  ): NotificationsConnection
+  getNotificationPreferences(userId: ID!): NotificationPreferences
+  getUnreadCount(userId: ID!): Int
+}
+
+type Mutation @aws_cognito_user_pools {
+  markNotificationRead(notificationId: ID!): Notification
+  markNotificationClicked(notificationId: ID!): Notification
+  updateNotificationPreferences(input: UpdateNotificationPreferencesInput!): NotificationPreferences
+  deleteNotification(notificationId: ID!): Boolean
+}
+
+
+enum NotificationType {
+  ORDER_CONFIRMED
+  ORDER_SHIPPED
+  ORDER_DELIVERED
+  ORDER_CANCELED
+  NEW_MESSAGE
+  MESSAGE_REPLY
+  REVIEW_RECEIVED
+  REVIEW_APPROVED
+  PRODUCT_FAVORITED
+  NEW_PRODUCT_FROM_FOLLOWED_MAKER
+  ACCOUNT_VERIFIED
+  PAYOUT_COMPLETED
+}
+
+type Notification {
+  notificationId: ID!
+  userId: ID!
+  type: NotificationType!
+  title: String!
+  message: String!
+  payload: AWSJSON
+  readAt: AWSDateTime
+  clickedAt: AWSDateTime
+  createdAt: AWSDateTime!
+}
+
+type NotificationsConnection {
+  items: [Notification!]!
+  nextToken: String
+  unreadCount: Int
+}
+
+type NotificationPreferences {
+  userId: ID!
+  preferences: [NotificationTypePreference!]!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type NotificationTypePreference {
+  type: NotificationType!
+  inApp: Boolean!
+  email: Boolean!
+  push: Boolean!
+  sms: Boolean!
+}
+
+input UpdateNotificationPreferencesInput {
+  userId: ID!
+  preferences: [NotificationTypePreferenceInput!]!
+}
+
+input NotificationTypePreferenceInput {
+  type: NotificationType!
+  inApp: Boolean
+  email: Boolean
+  push: Boolean
+  sms: Boolean
+}
