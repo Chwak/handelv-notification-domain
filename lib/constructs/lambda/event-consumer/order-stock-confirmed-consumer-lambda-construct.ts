@@ -34,7 +34,7 @@ export class OrderStockConfirmedConsumerLambdaConstruct extends Construct {
 
     this.function = new lambdaNodeJs.NodejsFunction(this, 'OrderStockConfirmedConsumerFunction', {
       functionName: `${props.environment}-${props.regionCode}-notification-order-stock-confirmed-consumer`,
-      entry: `${__dirname}/../../../../functions/lambda/event-consumer/order-stock-confirmed-consumer-lambda.ts`,
+      entry: `${__dirname}/../../../functions/lambda/event-consumer/order-stock-confirmed-consumer-lambda.ts`,
       handler: 'handler',
       runtime: lambda.Runtime.NODEJS_20_X,
       timeout: Duration.seconds(60),
