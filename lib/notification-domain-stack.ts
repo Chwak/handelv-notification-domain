@@ -35,7 +35,7 @@ export class NotificationDomainStack extends cdk.Stack {
 
     const schemaRegistryName = ssm.StringParameter.valueForStringParameter(
       this,
-      `/hand-made/${props.environment}/shared-infra/schema-registry-name`,
+      `/${props.environment}/shared-infra/glue/schema-registry-name`,
     );
 
     // Create SNS topics for notifications

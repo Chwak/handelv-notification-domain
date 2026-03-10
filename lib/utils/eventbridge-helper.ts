@@ -10,7 +10,7 @@ export function importEventBusFromSharedInfra(scope: Construct, environment: str
     scope,
     "SharedEventBusArn",
     {
-      parameterName: `/hand-made/${environment}/shared-infra/event-bus-arn`,
+      parameterName: `/${environment}/shared-infra/eventbridge/event-bus-arn`,
     }
   );
 
@@ -29,7 +29,7 @@ export function getEventBusArnFromSharedInfra(scope: Construct, environment: str
     scope,
     "SharedEventBusArnForArn",
     {
-      parameterName: `/hand-made/${environment}/shared-infra/event-bus-arn`,
+      parameterName: `/${environment}/shared-infra/eventbridge/event-bus-arn`,
     }
   );
 
