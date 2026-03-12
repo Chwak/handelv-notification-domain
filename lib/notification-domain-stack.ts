@@ -16,6 +16,10 @@ import { NotificationAppSyncResolversConstruct } from "./constructs/appsync/noti
 import { OrderCreatedConsumerLambdaConstruct } from "./constructs/lambda/event-consumer/order-created-consumer-lambda-construct";
 import { OrderPaidConsumerLambdaConstruct } from "./constructs/lambda/event-consumer/order-paid-consumer-lambda-construct";
 import { OrderStockConfirmedConsumerLambdaConstruct } from "./constructs/lambda/event-consumer/order-stock-confirmed-consumer-lambda-construct";
+import { CommissionProposalSubmittedConsumerLambdaConstruct } from "./constructs/lambda/event-consumer/commission-proposal-submitted-consumer-lambda-construct";
+import { CommissionProposalAcceptedConsumerLambdaConstruct } from "./constructs/lambda/event-consumer/commission-proposal-accepted-consumer-lambda-construct";
+import { CommissionProposalDeclinedConsumerLambdaConstruct } from "./constructs/lambda/event-consumer/commission-proposal-declined-consumer-lambda-construct";
+import { CommissionMilestoneClipAddedConsumerLambdaConstruct } from "./constructs/lambda/event-consumer/commission-milestone-clip-added-consumer-lambda-construct";
 import { importEventBusFromSharedInfra } from "./utils/eventbridge-helper";
 import { RepublishLambdaConstruct } from "./constructs/lambda/republish/republish-lambda-construct";
 
@@ -136,6 +140,42 @@ export class NotificationDomainStack extends cdk.Stack {
     });
 
     const orderStockConfirmedConsumer = new OrderStockConfirmedConsumerLambdaConstruct(this, "OrderStockConfirmedConsumer", {
+      environment: props.environment,
+      regionCode: props.regionCode,
+      notificationsTable: notificationTables.notificationsTable,
+      outboxTable: outboxTable.table,
+      eventBus,
+      removalPolicy,
+    });
+
+    new CommissionProposalSubmittedConsumerLambdaConstruct(this, "CommissionProposalSubmittedConsumer", {
+      environment: props.environment,
+      regionCode: props.regionCode,
+      notificationsTable: notificationTables.notificationsTable,
+      outboxTable: outboxTable.table,
+      eventBus,
+      removalPolicy,
+    });
+
+    new CommissionProposalAcceptedConsumerLambdaConstruct(this, "CommissionProposalAcceptedConsumer", {
+      environment: props.environment,
+      regionCode: props.regionCode,
+      notificationsTable: notificationTables.notificationsTable,
+      outboxTable: outboxTable.table,
+      eventBus,
+      removalPolicy,
+    });
+
+    new CommissionProposalDeclinedConsumerLambdaConstruct(this, "CommissionProposalDeclinedConsumer", {
+      environment: props.environment,
+      regionCode: props.regionCode,
+      notificationsTable: notificationTables.notificationsTable,
+      outboxTable: outboxTable.table,
+      eventBus,
+      removalPolicy,
+    });
+
+    new CommissionMilestoneClipAddedConsumerLambdaConstruct(this, "CommissionMilestoneClipAddedConsumer", {
       environment: props.environment,
       regionCode: props.regionCode,
       notificationsTable: notificationTables.notificationsTable,
