@@ -6,18 +6,18 @@ import type { Construct } from "constructs";
  * Import the shared EventBus from the shared-infra stack via SSM parameter
  */
 export function importEventBusFromSharedInfra(scope: Construct, environment: string): events.IEventBus {
-  const eventBusArnParam = ssm.StringParameter.fromStringParameterAttributes(
+  const eventBusNameParam = ssm.StringParameter.fromStringParameterAttributes(
     scope,
-    "SharedEventBusArn",
+    "SharedEventBusName",
     {
-      parameterName: `/${environment}/shared-infra/eventbridge/event-bus-arn`,
+      parameterName: `/${environment}/shared-infra/eventbridge/event-bus-name`,
     }
   );
 
-  return events.EventBus.fromEventBusArn(
+  return events.EventBus.fromEventBusName(
     scope,
     "SharedEventBus",
-    eventBusArnParam.stringValue
+    eventBusNameParam.stringValue
   );
 }
 
@@ -25,13 +25,13 @@ export function importEventBusFromSharedInfra(scope: Construct, environment: str
  * Get the event bus ARN from the shared-infra stack via SSM parameter
  */
 export function getEventBusArnFromSharedInfra(scope: Construct, environment: string): string {
-  const eventBusArnParam = ssm.StringParameter.fromStringParameterAttributes(
+  const eventBusNameParam = ssm.StringParameter.fromStringParameterAttributes(
     scope,
-    "SharedEventBusArnForArn",
+    "SharedEventBusNameForArn",
     {
-      parameterName: `/${environment}/shared-infra/eventbridge/event-bus-arn`,
+      parameterName: `/${environment}/shared-infra/eventbridge/event-bus-name`,
     }
   );
 
-  return eventBusArnParam.stringValue;
+  return eventBusNameParam.stringValue;
 }

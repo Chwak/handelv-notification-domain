@@ -72,7 +72,7 @@ export class CommissionMilestoneClipAddedConsumerLambdaConstruct extends Constru
     const rule = new events.Rule(this, 'CommissionMilestoneClipAddedRule', {
       eventBus: props.eventBus,
       eventPattern: {
-        source: ['hand-made.maker-domain'],
+        source: ['hand-made.special-request-domain'],
         detailType: ['commission.milestone.clip.added.v1'],
       },
     });

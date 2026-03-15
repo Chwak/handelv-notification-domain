@@ -7,8 +7,8 @@ const NOTIFICATIONS_TABLE_NAME = process.env.NOTIFICATIONS_TABLE_NAME || '';
 
 const dynamodbDoc = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
-interface ProposalDeclinedPayload {
-  proposalId: string;
+interface SpecialRequestAcceptedPayload {
+  specialRequestId: string;
   makerId: string;
   collectorId: string;
   newStatus: string;
@@ -16,7 +16,7 @@ interface ProposalDeclinedPayload {
 }
 
 export const handler = async (event: SQSEvent): Promise<{ batchItemFailures: Array<{ itemIdentifier: string }> }> => {
-  console.log('===== COMMISSION PROPOSAL DECLINED CONSUMER (Notification Domain) =====');
+  console.log('===== COMMISSION SPECIAL REQUEST ACCEPTED CONSUMER (Notification Domain) =====');
 
   const batchItemFailures: Array<{ itemIdentifier: string }> = [];
 
@@ -30,11 +30,11 @@ export const handler = async (event: SQSEvent): Promise<{ batchItemFailures: Arr
       if (!record.body) throw new Error('Empty SQS message body');
 
       const envelope = JSON.parse(record.body);
-      const detail = (envelope.detail ?? envelope) as ProposalDeclinedPayload;
+      const detail = (envelope.detail ?? envelope) as SpecialRequestAcceptedPayload;
 
-      const { proposalId, collectorId } = detail;
-      if (!proposalId || !collectorId) {
-        throw new Error(`Missing required fields: proposalId=${proposalId}, collectorId=${collectorId}`);
+      const { specialRequestId, collectorId } = detail;
+      if (!specialRequestId || !collectorId) {
+        throw new Error(`Missing required fields: specialRequestId=${specialRequestId}, collectorId=${collectorId}`);
       }
 
       const notificationId = `notification-${randomUUID()}`;
@@ -46,10 +46,10 @@ export const handler = async (event: SQSEvent): Promise<{ batchItemFailures: Arr
           Item: {
             notificationId,
             userId: collectorId,
-            type: 'COMMISSION_PROPOSAL_DECLINED',
-            title: 'Commission update',
-            message: 'The Artisan is currently focused on other creations. Please check back when the kiln is open.',
-            payload: JSON.stringify({ proposalId }),
+            type: 'COMMISSION_SPECIAL_REQUEST_ACCEPTED',
+            title: 'Your commission has begun',
+            message: 'The Artisan has accepted your Vision Brief. Your Masterpiece is now In Creation. Follow the journey in your Creation Portal.',
+            payload: JSON.stringify({ specialRequestId }),
             isRead: false,
             createdAt: new Date(now).toISOString(),
             expiresAt: Math.floor(now / 1000) + 30 * 24 * 60 * 60,
@@ -57,9 +57,9 @@ export const handler = async (event: SQSEvent): Promise<{ batchItemFailures: Arr
         }),
       );
 
-      console.log('Commission declined notification created for collector', { collectorId, proposalId });
+      console.log('Commission accepted notification created for collector', { collectorId, specialRequestId });
     } catch (err) {
-      console.error('Failed to process commission.proposal.declined record', { messageId, err });
+      console.error('Failed to process commission.special_request.accepted record', { messageId, err });
       batchItemFailures.push({ itemIdentifier: messageId });
     }
   }

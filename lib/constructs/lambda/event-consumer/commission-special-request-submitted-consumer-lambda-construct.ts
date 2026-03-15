@@ -9,7 +9,7 @@ import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { Construct } from 'constructs';
 import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 
-export interface CommissionProposalDeclinedConsumerLambdaConstructProps {
+export interface CommissionSpecialRequestSubmittedConsumerLambdaConstructProps {
   environment: string;
   regionCode: string;
   eventBus: events.IEventBus;
@@ -18,23 +18,23 @@ export interface CommissionProposalDeclinedConsumerLambdaConstructProps {
   removalPolicy?: RemovalPolicy;
 }
 
-export class CommissionProposalDeclinedConsumerLambdaConstruct extends Construct {
+export class CommissionSpecialRequestSubmittedConsumerLambdaConstruct extends Construct {
   public readonly function: lambda.IFunction;
   public readonly queue: sqs.IQueue;
 
-  constructor(scope: Construct, id: string, props: CommissionProposalDeclinedConsumerLambdaConstructProps) {
+  constructor(scope: Construct, id: string, props: CommissionSpecialRequestSubmittedConsumerLambdaConstructProps) {
     super(scope, id);
 
-    this.queue = new sqs.Queue(this, 'CommissionProposalDeclinedConsumerQueue', {
-      queueName: `${props.environment}-${props.regionCode}-notification-commission-proposal-declined-consumer-queue`,
+    this.queue = new sqs.Queue(this, 'CommissionSpecialRequestSubmittedConsumerQueue', {
+      queueName: `${props.environment}-${props.regionCode}-notification-special-request-submitted-consumer-queue`,
       visibilityTimeout: Duration.seconds(180),
       retentionPeriod: Duration.days(4),
       removalPolicy: props.removalPolicy ?? RemovalPolicy.DESTROY,
     });
 
-    this.function = new lambdaNodeJs.NodejsFunction(this, 'CommissionProposalDeclinedConsumerFunction', {
-      functionName: `${props.environment}-${props.regionCode}-notification-commission-proposal-declined-consumer`,
-      entry: `${__dirname}/../../../functions/lambda/event-consumer/commission-proposal-declined-consumer-lambda.ts`,
+    this.function = new lambdaNodeJs.NodejsFunction(this, 'CommissionSpecialRequestSubmittedConsumerFunction', {
+      functionName: `${props.environment}-${props.regionCode}-notification-special-request-submitted-consumer`,
+      entry: `${__dirname}/../../../functions/lambda/event-consumer/commission-special-request-submitted-consumer-lambda.ts`,
       handler: 'handler',
       runtime: lambda.Runtime.NODEJS_20_X,
       timeout: Duration.seconds(60),
@@ -53,8 +53,8 @@ export class CommissionProposalDeclinedConsumerLambdaConstruct extends Construct
       },
     });
 
-    new logs.LogGroup(this, 'CommissionProposalDeclinedConsumerLogGroup', {
-      logGroupName: `/aws/lambda/${props.environment}-${props.regionCode}-notification-commission-proposal-declined-consumer`,
+    new logs.LogGroup(this, 'CommissionSpecialRequestSubmittedConsumerLogGroup', {
+      logGroupName: `/aws/lambda/${props.environment}-${props.regionCode}-notification-special-request-submitted-consumer`,
       retention: logs.RetentionDays.ONE_WEEK,
       removalPolicy: props.removalPolicy ?? RemovalPolicy.DESTROY,
     });
@@ -69,11 +69,11 @@ export class CommissionProposalDeclinedConsumerLambdaConstruct extends Construct
       }),
     );
 
-    const rule = new events.Rule(this, 'CommissionProposalDeclinedRule', {
+    const rule = new events.Rule(this, 'CommissionSpecialRequestSubmittedRule', {
       eventBus: props.eventBus,
       eventPattern: {
-        source: ['hand-made.maker-domain'],
-        detailType: ['commission.proposal.declined.v1'],
+        source: ['hand-made.special-request-domain'],
+        detailType: ['commission.special_request.submitted.v1'],
       },
     });
 

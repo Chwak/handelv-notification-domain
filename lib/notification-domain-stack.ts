@@ -16,9 +16,9 @@ import { NotificationAppSyncResolversConstruct } from "./constructs/appsync/noti
 import { OrderCreatedConsumerLambdaConstruct } from "./constructs/lambda/event-consumer/order-created-consumer-lambda-construct";
 import { OrderPaidConsumerLambdaConstruct } from "./constructs/lambda/event-consumer/order-paid-consumer-lambda-construct";
 import { OrderStockConfirmedConsumerLambdaConstruct } from "./constructs/lambda/event-consumer/order-stock-confirmed-consumer-lambda-construct";
-import { CommissionProposalSubmittedConsumerLambdaConstruct } from "./constructs/lambda/event-consumer/commission-proposal-submitted-consumer-lambda-construct";
-import { CommissionProposalAcceptedConsumerLambdaConstruct } from "./constructs/lambda/event-consumer/commission-proposal-accepted-consumer-lambda-construct";
-import { CommissionProposalDeclinedConsumerLambdaConstruct } from "./constructs/lambda/event-consumer/commission-proposal-declined-consumer-lambda-construct";
+import { CommissionSpecialRequestSubmittedConsumerLambdaConstruct } from "./constructs/lambda/event-consumer/commission-special-request-submitted-consumer-lambda-construct";
+import { CommissionSpecialRequestAcceptedConsumerLambdaConstruct } from "./constructs/lambda/event-consumer/commission-special-request-accepted-consumer-lambda-construct";
+import { CommissionSpecialRequestDeclinedConsumerLambdaConstruct } from "./constructs/lambda/event-consumer/commission-special-request-declined-consumer-lambda-construct";
 import { CommissionMilestoneClipAddedConsumerLambdaConstruct } from "./constructs/lambda/event-consumer/commission-milestone-clip-added-consumer-lambda-construct";
 import { importEventBusFromSharedInfra } from "./utils/eventbridge-helper";
 import { RepublishLambdaConstruct } from "./constructs/lambda/republish/republish-lambda-construct";
@@ -148,7 +148,7 @@ export class NotificationDomainStack extends cdk.Stack {
       removalPolicy,
     });
 
-    new CommissionProposalSubmittedConsumerLambdaConstruct(this, "CommissionProposalSubmittedConsumer", {
+    new CommissionSpecialRequestSubmittedConsumerLambdaConstruct(this, "CommissionSpecialRequestSubmittedConsumer", {
       environment: props.environment,
       regionCode: props.regionCode,
       notificationsTable: notificationTables.notificationsTable,
@@ -157,7 +157,7 @@ export class NotificationDomainStack extends cdk.Stack {
       removalPolicy,
     });
 
-    new CommissionProposalAcceptedConsumerLambdaConstruct(this, "CommissionProposalAcceptedConsumer", {
+    new CommissionSpecialRequestAcceptedConsumerLambdaConstruct(this, "CommissionSpecialRequestAcceptedConsumer", {
       environment: props.environment,
       regionCode: props.regionCode,
       notificationsTable: notificationTables.notificationsTable,
@@ -166,7 +166,7 @@ export class NotificationDomainStack extends cdk.Stack {
       removalPolicy,
     });
 
-    new CommissionProposalDeclinedConsumerLambdaConstruct(this, "CommissionProposalDeclinedConsumer", {
+    new CommissionSpecialRequestDeclinedConsumerLambdaConstruct(this, "CommissionSpecialRequestDeclinedConsumer", {
       environment: props.environment,
       regionCode: props.regionCode,
       notificationsTable: notificationTables.notificationsTable,
